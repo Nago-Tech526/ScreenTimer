@@ -137,7 +137,7 @@ class TransparentClock(QWidget):
 
         # 色の設定：orange_levelsが0の場合は全体白、そうでなければ下部がゴールド
         self.label.baseColor = Qt.white
-        self.label.transitionColor = QColor(255, 215, 0) if orange_levels > 0 else Qt.white
+        self.label.transitionColor = QColor(255, 200, 0) if orange_levels > 0 else Qt.white
 
         # white_level をラベルに設定して再描画を依頼
         self.label.white_level = white_level
