@@ -1,7 +1,7 @@
 import sys
 from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QDesktopWidget
 from PyQt5.QtCore import QTimer, Qt, QTime, QPoint
-from PyQt5.QtGui import QFont, QPainter, QColor, QPen, QBrush, QLinearGradient
+from PyQt5.QtGui import QFont, QPainter, QColor, QPen, QBrush, QLinearGradient, QPainterPath
 
 class GradientLabel(QWidget):
     def __init__(self, parent=None):
@@ -38,22 +38,26 @@ class GradientLabel(QWidget):
 
     def paintEvent(self, event):
         painter = QPainter(self)
+        painter.setRenderHint(QPainter.Antialiasing)
         painter.setFont(self._font)
         rect = self.rect()
-        
+
         # フォントメトリクスを利用してテキストのバウンディングボックスを取得
         fm = painter.fontMetrics()
         text_rect = fm.boundingRect(self._text)
-        
-        # 水平方向に中央揃えするための x 座標計算
-        x = (rect.width() - text_rect.width()) // 2
-        # テキストの上端をウィジェットの上端に合わせる（必要に応じて y の調整をしてください）
-        text_rect.moveTopLeft(QPoint(x, 0))
-        
-        # テキストの上端と下端をグラデーションの開始・終了位置として設定
-        gradient = QLinearGradient(0, text_rect.top(), 0, text_rect.bottom())
 
-        # white_level に応じてグラデーションの色を設定
+        # テキストをウィジェット内で横中央、かつテキストの上端がウィジェット上端に来るように配置
+        # boundingRect() はテキストの内部でのオフセット（left, top）を含むので、それを補正します
+        x = (rect.width() - text_rect.width()) // 2 - text_rect.left()
+        # y 座標はテキストの top が 0 になるように調整
+        y = -text_rect.top()
+
+        # QPainterPath にテキストを追加
+        path = QPainterPath()
+        path.addText(x, y, self._font, self._text)
+
+        # テキストの実際の高さを使ってグラデーションの範囲を設定
+        gradient = QLinearGradient(0, 0, 0, text_rect.height())
         if self.white_level >= 6:
             gradient.setColorAt(0.0, self.baseColor)
             gradient.setColorAt(1.0, self.baseColor)
@@ -68,16 +72,19 @@ class GradientLabel(QWidget):
             gradient.setColorAt(0.23, self.transitionColor)
             gradient.setColorAt(1.0, self.transitionColor)
         else:
-            # white_level に応じたグラデーション切り替え位置（テキストの高さを6等分）
             ratio = self.white_level / 6.0
             gradient.setColorAt(0.0, self.baseColor)
             gradient.setColorAt(max(0.0, ratio - 0.01), self.baseColor)
             gradient.setColorAt(ratio, self.transitionColor)
             gradient.setColorAt(1.0, self.transitionColor)
-        
+        # まずアウトラインを描画（ここではアウトラインの色をグレー、幅を2に設定）
+        outline_pen = QPen(QColor(211, 211, 211), 2)
+        painter.setPen(outline_pen)
+        painter.drawPath(path)
+        # 次に、グラデーションブラシでテキスト内部を塗りつぶす
         painter.setPen(QPen(QBrush(gradient), 0))
-        # text_rect を描画領域として指定
-        painter.drawText(text_rect, Qt.AlignCenter, self._text)
+        painter.fillPath(path, QBrush(gradient))
+
         painter.end()
 
 class TransparentClock(QWidget):
@@ -128,9 +135,9 @@ class TransparentClock(QWidget):
         orange_levels = seconds // 10
         white_level = 6 - orange_levels
 
-        # 色の設定：orange_levelsが0の場合は全体白、そうでなければ下部がオレンジ
+        # 色の設定：orange_levelsが0の場合は全体白、そうでなければ下部がゴールド
         self.label.baseColor = Qt.white
-        self.label.transitionColor = QColor(255, 165, 0) if orange_levels > 0 else Qt.white
+        self.label.transitionColor = QColor(255, 215, 0) if orange_levels > 0 else Qt.white
 
         # white_level をラベルに設定して再描画を依頼
         self.label.white_level = white_level
