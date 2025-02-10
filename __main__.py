@@ -137,7 +137,7 @@ class TransparentClock(QWidget):
         self.label.white_level = white_level
 
         # 時計の表示を更新
-        self.label.setText(currentTime.toString("hh:mm:ss"))
+        self.label.setText(currentTime.toString("hh:mm"))
 
     # マウスドラッグによるウィンドウ移動のためのイベント
     def mousePressEvent(self, event):
