@@ -8,7 +8,7 @@ class GradientLabel(QWidget):
         super().__init__(parent)
         self._text = ""
         self._alignment = Qt.AlignCenter
-        self._font = QFont("Arial", 50, QFont.Bold)
+        self._font = QFont("Arial", 67, QFont.Bold)
         # 初期状態：すべて白
         self.baseColor = Qt.white
         self.transitionColor = Qt.white
@@ -95,7 +95,7 @@ class TransparentClock(QWidget):
         # カスタムラベル（グラデーションで描画するラベル）を作成
         self.label = GradientLabel(self)
         self.label.setAlignment(Qt.AlignCenter)
-        font = QFont("Arial", 50, QFont.Bold)
+        font = QFont("Arial", 67, QFont.Bold)
         self.label.setFont(font)
 
         layout = QVBoxLayout()
@@ -109,14 +109,13 @@ class TransparentClock(QWidget):
         self.timer.start(1000)
         self.updateTime()
 
-        # ウィンドウサイズ設定し、右上に配置
-        self.resize(300, 100)
-        self.moveToTopRight()
+        # ウィンドウサイズ設定し、左上に配置
+        self.resize(210, 100)
+        self.moveToTopLeft()
 
-    def moveToTopRight(self):
-        # QDesktopWidgetを用いて画面の右上に移動
-        screen = QDesktopWidget().availableGeometry()
-        x = screen.width() - self.width()
+    def moveToTopLeft(self):
+        # 画面の右上に移動
+        x = 0
         y = 0
         self.move(x, y)
 
