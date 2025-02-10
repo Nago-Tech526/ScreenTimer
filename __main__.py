@@ -47,10 +47,8 @@ class GradientLabel(QWidget):
         text_rect = fm.boundingRect(self._text)
 
         # テキストをウィジェット内で横中央、かつテキストの上端がウィジェット上端に来るように配置
-        # boundingRect() はテキストの内部でのオフセット（left, top）を含むので、それを補正します
         x = (rect.width() - text_rect.width()) // 2 - text_rect.left()
-        # y 座標はテキストの top が 0 になるように調整
-        y = -text_rect.top()
+        y = -text_rect.top()  # テキストの上端をウィジェットの上端に合わせる
 
         # QPainterPath にテキストを追加
         path = QPainterPath()
@@ -77,6 +75,7 @@ class GradientLabel(QWidget):
             gradient.setColorAt(max(0.0, ratio - 0.01), self.baseColor)
             gradient.setColorAt(ratio, self.transitionColor)
             gradient.setColorAt(1.0, self.transitionColor)
+        
         # まずアウトラインを描画（ここではアウトラインの色をグレー、幅を2に設定）
         outline_pen = QPen(QColor(211, 211, 211), 2)
         painter.setPen(outline_pen)
@@ -84,13 +83,15 @@ class GradientLabel(QWidget):
         # 次に、グラデーションブラシでテキスト内部を塗りつぶす
         painter.setPen(QPen(QBrush(gradient), 0))
         painter.fillPath(path, QBrush(gradient))
-
         painter.end()
 
 class TransparentClock(QWidget):
     def __init__(self):
         super().__init__()
+        # 初回更新フラグ
+        self.first_update = True
         self.initUI()
+
         # ドラッグ用の変数
         self.dragPos = QPoint()
 
@@ -114,22 +115,26 @@ class TransparentClock(QWidget):
         self.timer = QTimer(self)
         self.timer.timeout.connect(self.updateTime)
         self.timer.start(1000)
-        self.updateTime()
+        # 起動時は必ず一度更新（描画）を実施する
+        self.updateTime(force=True)
 
         # ウィンドウサイズ設定し、左上に配置
         self.resize(210, 100)
         self.moveToTopLeft()
 
     def moveToTopLeft(self):
-        # 画面の右上に移動
         x = 0
         y = 0
         self.move(x, y)
 
-    def updateTime(self):
-        # 現在の秒数を取得
+    def updateTime(self, force=False):
         currentTime = QTime.currentTime()
         seconds = currentTime.second()
+
+        # 起動時（force=True）なら更新を実施、
+        # それ以降は秒が10の倍数の場合のみ更新
+        if not force and seconds % 10 != 0:
+            return
 
         # 10秒ごとに6段階で変化
         orange_levels = seconds // 10
@@ -139,11 +144,15 @@ class TransparentClock(QWidget):
         self.label.baseColor = Qt.white
         self.label.transitionColor = QColor(255, 200, 0) if orange_levels > 0 else Qt.white
 
-        # white_level をラベルに設定して再描画を依頼
+        # white_level をラベルに設定
         self.label.white_level = white_level
 
-        # 時計の表示を更新
+        # 時計の表示を更新（例: hh:mm 形式）
         self.label.setText(currentTime.toString("hh:mm"))
+
+        # 初回更新が完了したらフラグを落とす
+        if force:
+            self.first_update = False
 
     # マウスドラッグによるウィンドウ移動のためのイベント
     def mousePressEvent(self, event):
