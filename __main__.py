@@ -9,10 +9,12 @@ class GradientLabel(QWidget):
         self._text = ""
         self._alignment = Qt.AlignCenter
         self._font = QFont("Arial", 50, QFont.Bold)
-        # 初期状態：上半分白、下半分白
+        # 初期状態：すべて白
         self.baseColor = Qt.white
-        self.transitionColor = Qt.white  # 初期は下半分も白
-    
+        self.transitionColor = Qt.white
+        # グラデーションの切り替え位置 (初期値は6で全体が白)
+        self.white_level = 6
+
     def setText(self, text):
         self._text = text
         self.update()
@@ -38,14 +40,45 @@ class GradientLabel(QWidget):
         painter = QPainter(self)
         painter.setFont(self._font)
         rect = self.rect()
-        # 上半分と下半分を分けるグラデーション（中央で急激に切り替え）
-        gradient = QLinearGradient(0, 0, 0, rect.height())
-        gradient.setColorAt(0.0, self.baseColor)
-        gradient.setColorAt(0.49, self.baseColor)
-        gradient.setColorAt(0.5, self.transitionColor)
-        gradient.setColorAt(1.0, self.transitionColor)
+        
+        # フォントメトリクスを利用してテキストのバウンディングボックスを取得
+        fm = painter.fontMetrics()
+        text_rect = fm.boundingRect(self._text)
+        
+        # 水平方向に中央揃えするための x 座標計算
+        x = (rect.width() - text_rect.width()) // 2
+        # テキストの上端をウィジェットの上端に合わせる（必要に応じて y の調整をしてください）
+        text_rect.moveTopLeft(QPoint(x, 0))
+        
+        # テキストの上端と下端をグラデーションの開始・終了位置として設定
+        gradient = QLinearGradient(0, text_rect.top(), 0, text_rect.bottom())
+
+        # white_level に応じてグラデーションの色を設定
+        if self.white_level >= 6:
+            gradient.setColorAt(0.0, self.baseColor)
+            gradient.setColorAt(1.0, self.baseColor)
+        elif self.white_level == 5:
+            gradient.setColorAt(0.0, self.baseColor)
+            gradient.setColorAt(0.77, self.baseColor)
+            gradient.setColorAt(0.78, self.transitionColor)
+            gradient.setColorAt(1.0, self.transitionColor)
+        elif self.white_level == 1:
+            gradient.setColorAt(0.0, self.baseColor)
+            gradient.setColorAt(0.22, self.baseColor)
+            gradient.setColorAt(0.23, self.transitionColor)
+            gradient.setColorAt(1.0, self.transitionColor)
+        else:
+            # white_level に応じたグラデーション切り替え位置（テキストの高さを6等分）
+            ratio = self.white_level / 6.0
+            gradient.setColorAt(0.0, self.baseColor)
+            gradient.setColorAt(max(0.0, ratio - 0.01), self.baseColor)
+            gradient.setColorAt(ratio, self.transitionColor)
+            gradient.setColorAt(1.0, self.transitionColor)
+        
         painter.setPen(QPen(QBrush(gradient), 0))
-        painter.drawText(rect, self._alignment, self._text)
+        # text_rect を描画領域として指定
+        painter.drawText(text_rect, Qt.AlignCenter, self._text)
+        painter.end()
 
 class TransparentClock(QWidget):
     def __init__(self):
@@ -92,14 +125,16 @@ class TransparentClock(QWidget):
         currentTime = QTime.currentTime()
         seconds = currentTime.second()
 
-        # 00秒〜29秒: 上半分白、下半分白
-        # 30秒〜59秒: 上半分白、下半分オレンジ
-        if seconds < 30:
-            self.label.baseColor = Qt.white
-            self.label.transitionColor = Qt.white  # 下半分も白
-        else:
-            self.label.baseColor = Qt.white
-            self.label.transitionColor = QColor(255, 165, 0) #オレンジ
+        # 10秒ごとに6段階で変化
+        orange_levels = seconds // 10
+        white_level = 6 - orange_levels
+
+        # 色の設定：orange_levelsが0の場合は全体白、そうでなければ下部がオレンジ
+        self.label.baseColor = Qt.white
+        self.label.transitionColor = QColor(255, 165, 0) if orange_levels > 0 else Qt.white
+
+        # white_level をラベルに設定して再描画を依頼
+        self.label.white_level = white_level
 
         # 時計の表示を更新
         self.label.setText(currentTime.toString("hh:mm:ss"))
